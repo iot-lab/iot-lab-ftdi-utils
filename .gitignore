@@ -30,3 +30,7 @@
 
 # Debug files
 *.dSYM/
+
+# Compiled files
+ftdi-devices-list
+ftdi-eeprom-config
