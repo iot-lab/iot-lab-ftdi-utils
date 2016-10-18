@@ -10,5 +10,7 @@ ftdi-devices-list: devices_list.c
 ftdi-eeprom-config: eeprom_config.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
+install:
+	cp $(PACKAGES) /usr/local/bin/
 clean:
 	rm -f $(PACKAGES)
