@@ -39,6 +39,8 @@ enum ftdi_product {
     FTDI_4232 = PRODUCT_4232,
 };
 
+#define USB_DEVICE struct usb_device
+
 static void print_usage_exit(char * bin)
 {
     printf("usage: %s [-t ftdi_type] [-r]\n", bin);
@@ -103,6 +105,35 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+
+static void _device_reset(struct ftdi_context *ftdi, USB_DEVICE *usbdevice)
+{
+    // Open the USB device
+    ftdi_usb_open_dev(ftdi, usbdevice);
+
+    // Reset it
+    ftdi_usb_reset(ftdi);
+
+    // And close the handle
+    ftdi_usb_close(ftdi);
+}
+
+
+static void _device_print(struct ftdi_context *ftdi, USB_DEVICE *usbdevice)
+{
+    char manufacturer[128];
+    char description[128];
+    char serial[128];
+    ftdi_usb_get_strings(ftdi, usbdevice,
+                         manufacturer, sizeof(manufacturer),
+                         description, sizeof(description),
+                         serial, sizeof(serial));
+    printf("\tManufacturer: %s \n", manufacturer);
+    printf("\tDescription: %s \n", description);
+    printf("\tSerial: %s\n", serial);
+}
+
+
 static void do_list(struct ftdi_context *ftdi, int product, int reset)
 {
     int ret;
@@ -120,30 +151,15 @@ static void do_list(struct ftdi_context *ftdi, int product, int reset)
         int num = 0;
         struct ftdi_device_list* dev;
         for (dev = device_list; dev != NULL; dev = dev->next, num++) {
-            char man[128];
-            char des[128];
-            char ser[128];
 
             if (reset) {
                 printf("\tResetting device...\n");
-
-                // Open the USB device
-                usb_dev_handle *handle = usb_open(dev->dev);
-
-                // Reset it
-                usb_reset(handle);
-
-                // And close the handle
-                usb_close(handle);
-
+                _device_reset(ftdi, dev->dev);
                 printf("\t\tOK\n");
             }
 
-
-            ftdi_usb_get_strings(ftdi, dev->dev, man, sizeof(man), des, sizeof(des),
-                    ser, sizeof(ser));
-            printf("Device %u: \n\tManufacturer: %s \n\tDescription: %s \n\tSerial: %s\n", num, man, des, ser);
-
+            printf("Device %u: \n", num);
+            _device_print(ftdi, dev->dev);
         }
     }
 

@@ -117,20 +117,25 @@ int main(int argc, char *argv[])
     return ret;
 }
 
-static int update_name(char* current_name, char* new_name, char* new_serial,
-                       int product)
+
+static int _ftdi_device_open(struct ftdi_context *ftdi, int product,
+                             const char *current_name)
 {
-    int ret;
+    if (current_name) {
+        printf("Opening device with name \"%s\"\n", current_name);
+        return ftdi_usb_open_desc(ftdi, VENDOR, product, current_name, NULL);
+    } else {
+        printf("Opening device...\n");
+        return ftdi_usb_open(ftdi, VENDOR, product);
+    }
+}
+
+
+static int _ftdi_write_device_eeprom(struct ftdi_context *ftdi, int product,
+                                     char *name, char *serial)
+{
     struct ftdi_eeprom eeprom;
     unsigned char eeprom_buf[256];
-    struct ftdi_context ftdi_struct;
-    // too lazy to replace to &ftdi in all code
-    struct ftdi_context *ftdi = &ftdi_struct;
-
-    // Initialize the context
-    // set ftdi->module_detach_mode = AUTO_DETACH_SIO_MODULE;
-    // prevents "Unable to claim USB device"
-    ftdi_init(ftdi);
 
     // Initialize the EEPROM values
     ftdi_eeprom_initdefaults(&eeprom);
@@ -144,46 +149,55 @@ static int update_name(char* current_name, char* new_name, char* new_serial,
     eeprom.max_power = 50;
 
     eeprom.manufacturer = "IoT-LAB";
-    eeprom.product = new_name;
-    eeprom.serial = new_serial;
-
-    // Open ftdi device
-    if (current_name) {
-        printf("Opening device with name \"%s\"\n", current_name);
-        ret = ftdi_usb_open_desc(ftdi, VENDOR, product, current_name, NULL);
-    } else {
-        printf("Opening device...\n");
-        ret = ftdi_usb_open(ftdi, VENDOR, product);
-    }
-    if (ret != 0) {
-        printf("Unable to find FTDI device\n");
-        printf("Error: %s\n", ftdi->error_str);
-        return 1;
-    }
+    eeprom.product = name;
+    eeprom.serial = serial;
 
     // Force EEPROM size
     ftdi_eeprom_setsize(ftdi, &eeprom, 256);
-
-    // Erase the EEPROM
-    printf("Erasing eeprom...\n");
-    ret = ftdi_erase_eeprom(ftdi);
-    if (ret != 0)
-    {
-        printf("Unable to erase EEPROM\n");
-        printf("Error: %s\n", ftdi->error_str);
-        exit(-1);
-    }
 
     // Build the eeprom content
     ftdi_eeprom_build(&eeprom, eeprom_buf);
 
     // Store it
+    return ftdi_write_eeprom(ftdi, eeprom_buf);
+}
+
+
+static int update_name(char* current_name, char* new_name, char* new_serial,
+                       int product)
+{
+    int ret;
+    struct ftdi_context ftdi;
+
+    // Initialize the context
+    // set ftdi->module_detach_mode = AUTO_DETACH_SIO_MODULE;
+    // prevents "Unable to claim USB device"
+    ftdi_init(&ftdi);
+
+    // Open ftdi device
+    ret = _ftdi_device_open(&ftdi, product, current_name);
+    if (ret != 0) {
+        printf("Unable to find FTDI device\n");
+        printf("Error: %s\n", ftdi.error_str);
+        return 1;
+    }
+
+    // Erase the EEPROM
+    printf("Erasing eeprom...\n");
+    ret = ftdi_erase_eeprom(&ftdi);
+    if (ret != 0)
+    {
+        printf("Unable to erase EEPROM\n");
+        printf("Error: %s\n", ftdi.error_str);
+        exit(-1);
+    }
+
     printf("Writing eeprom...\n");
-    ret = ftdi_write_eeprom(ftdi, eeprom_buf);
+    ret = _ftdi_write_device_eeprom(&ftdi, product, new_name, new_serial);
     if (ret != 0)
     {
         printf("Unable to write EEPROM\n");
-        printf("Error: %s\n", ftdi->error_str);
+        printf("Error: %s\n", ftdi.error_str);
         exit(-1);
     }
 
