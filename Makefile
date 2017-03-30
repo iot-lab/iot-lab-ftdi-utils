@@ -1,4 +1,4 @@
-LDFLAGS = -lftdi -lusb
+LDFLAGS ?= -lftdi -lusb
 
 PACKAGES = ftdi-devices-list ftdi-eeprom-config
 
