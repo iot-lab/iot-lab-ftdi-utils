@@ -24,3 +24,11 @@ new_name
   e: FTDI current name
   s: SerialNumber
 ```
+
+
+### Support for libftdi1 ###
+
+Added support for libftdi1 in source files.
+
+To use it, LDFLAGS and CFLAGS should be adapted.
+Set `-DLIBFTDI1=1` in CFLAGS and uptade LDFLAGS to use libftdi1

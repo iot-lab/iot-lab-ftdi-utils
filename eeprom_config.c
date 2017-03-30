@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ftdi.h>
+#include <ctype.h>
 
 #define VENDOR 0x0403
 #define PRODUCT_2232 0x6010
@@ -130,7 +131,33 @@ static int _ftdi_device_open(struct ftdi_context *ftdi, int product,
     }
 }
 
+#if LIBFTDI1
+static int _ftdi_write_device_eeprom(struct ftdi_context *ftdi, int product,
+                                     char *name, char *serial)
+{
+    // Initialize the EEPROM values
+    ftdi_eeprom_initdefaults(ftdi, "IoT-LAB", name, serial);
 
+    // Set other values
+    ftdi_set_eeprom_value(ftdi, VENDOR_ID, VENDOR);
+    ftdi_set_eeprom_value(ftdi, PRODUCT_ID, product);
+    ftdi_set_eeprom_value(ftdi, SELF_POWERED, 0);
+    ftdi_set_eeprom_value(ftdi, REMOTE_WAKEUP, 0);
+    ftdi_set_eeprom_value(ftdi, CHIP_TYPE,
+                          product == PRODUCT_2232 ? TYPE_2232H : TYPE_4232H);
+    ftdi_set_eeprom_value(ftdi, MAX_POWER, 50),
+
+    // Force EEPROM size
+    /* TODO ftdi_eeprom_setsize(ftdi, &eeprom, 256); */
+
+    // Build the eeprom content
+    ftdi_eeprom_build(ftdi);
+
+    // Store it
+    return ftdi_write_eeprom(ftdi);
+}
+
+#else /* LIBFTDI1 */
 static int _ftdi_write_device_eeprom(struct ftdi_context *ftdi, int product,
                                      char *name, char *serial)
 {
@@ -161,6 +188,8 @@ static int _ftdi_write_device_eeprom(struct ftdi_context *ftdi, int product,
     // Store it
     return ftdi_write_eeprom(ftdi, eeprom_buf);
 }
+
+#endif /* LIBFTDI1 */
 
 
 static int update_name(char* current_name, char* new_name, char* new_serial,

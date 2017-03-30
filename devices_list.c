@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <ftdi.h>
 
@@ -39,7 +40,11 @@ enum ftdi_product {
     FTDI_4232 = PRODUCT_4232,
 };
 
+#if LIBFTDI1
+#define USB_DEVICE struct libusb_device
+#else /* LIBFTDI1 */
 #define USB_DEVICE struct usb_device
+#endif
 
 static void print_usage_exit(char * bin)
 {
